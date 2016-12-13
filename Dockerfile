@@ -1,17 +1,15 @@
-# Lightweight Alpine JDK
-FROM ibmjava:8-jre-alpine
-# Install necessary utilities
-RUN apk update \
-    && apk upgrade \
-    && apk add unzip \
-    && rm -rf /var/lib/apt/lists/*
+FROM websphere-liberty:kernel
 
-# Copy in and unzip the packaged Liberty server
-COPY ws.zip /tmp/
-RUN unzip -q /tmp/ws.zip -d /opt/ibm \
-    && rm /tmp/wlp.zip
-# Set PATH env var
-ENV PATH=/opt/ibm/wlp/bin:$PATH
-EXPOSE 9080 9443
-# startup command
-CMD ["/opt/ibm/wlp/bin/server", "run", "defaultServer"]
+ARG REPOSITORIES_PROPERTIES=""
+
+COPY server.xml /config/
+COPY UserWS.war /opt/ibm/wlp/usr/servers/defaultServer/dropins
+
+RUN if [ ! -z $REPOSITORIES_PROPERTIES ]; then \
+    mkdir /opt/ibm/wlp/etc/ \
+    echo $REPOSITORIES_PROPERTIES > /opt/ibm/wlp/etc/repositories.properties; \
+  fi \
+  && installUtility install --acceptLicense \
+    localConnector-1.0 ejbLite-3.2 jsp-2.3 jaxws-2.2  \
+  && if [ ! -z $REPOSITORIES_PROPERTIES ]; then rm /opt/ibm/wlp/etc/repositories.properties; fi \
+  && rm -rf /output/workarea /output/logs
